@@ -18,8 +18,37 @@ h1 {
   font-size: 20px;
 }
 
+h2 {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 p {
   margin: 0 0 12px;
+}
+
+.timer {
+  margin: 14px 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  text-align: center;
+}
+
+#elapsed {
+  display: block;
+  color: #1d4ed8;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 28px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+#timer-status {
+  margin: 3px 0 0;
+  color: #475569;
+  font-size: 12px;
 }
 
 label {

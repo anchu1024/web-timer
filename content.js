@@ -154,6 +154,7 @@
       document.removeEventListener("touchmove", blockPageInput, true);
     }
     chrome.storage.onChanged.removeListener(onSettingsChanged);
+    chrome.runtime.onMessage.removeListener(onRuntimeMessage);
     sessionStorage.removeItem(START_KEY);
     delete window[INSTANCE_KEY];
   }
@@ -172,7 +173,17 @@
     }
   }
 
+  function onRuntimeMessage(message, _sender, sendResponse) {
+    if (message?.type !== "get-elapsed-time") {
+      return false;
+    }
+
+    sendResponse({ elapsedMs: Date.now() - startedAt });
+    return false;
+  }
+
   chrome.storage.onChanged.addListener(onSettingsChanged);
+  chrome.runtime.onMessage.addListener(onRuntimeMessage);
   intervalId = window.setInterval(checkTimer, 1000);
   checkTimer();
 })();

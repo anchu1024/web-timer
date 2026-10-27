@@ -1,5 +1,19 @@
 const CONTENT_SCRIPT_ID = "web-timer";
 const STORAGE_KEY = "domains";
+const DEFAULT_DOMAINS = [
+  "youtube.com",
+  "x.com",
+  "instagram.com",
+  "facebook.com",
+  "tiktok.com",
+  "threads.net",
+  "reddit.com",
+  "snapchat.com",
+  "pinterest.com",
+  "linkedin.com",
+  "twitch.tv"
+];
+let registrationQueue = Promise.resolve();
 
 function getPatterns(domain) {
   if (domain === "localhost") {
@@ -15,10 +29,15 @@ function getPermissionOrigins(domain) {
   return [`http://*.${domain}/*`, `https://*.${domain}/*`];
 }
 
-async function registerForDomains(domains) {
-  await chrome.scripting.unregisterContentScripts({
+async function updateRegisteredDomains(domains) {
+  const registeredScripts = await chrome.scripting.getRegisteredContentScripts({
     ids: [CONTENT_SCRIPT_ID]
   });
+  if (registeredScripts.length > 0) {
+    await chrome.scripting.unregisterContentScripts({
+      ids: [CONTENT_SCRIPT_ID]
+    });
+  }
 
   if (domains.length === 0) {
     return;
@@ -31,6 +50,12 @@ async function registerForDomains(domains) {
     js: ["content.js"],
     runAt: "document_idle"
   }]);
+}
+
+function registerForDomains(domains) {
+  const operation = registrationQueue.then(() => updateRegisteredDomains(domains));
+  registrationQueue = operation.catch(() => {});
+  return operation;
 }
 
 async function injectIntoOpenTabs(domains) {
@@ -96,9 +121,23 @@ async function configureDomains(domains) {
 
 async function restoreConfiguration() {
   const settings = await chrome.storage.sync.get(STORAGE_KEY);
-  const domains = settings[STORAGE_KEY] || [];
+  let domains = settings[STORAGE_KEY];
+  if (!Object.prototype.hasOwnProperty.call(settings, STORAGE_KEY)) {
+    domains = DEFAULT_DOMAINS;
+    await chrome.storage.sync.set({ [STORAGE_KEY]: domains });
+  }
+
   try {
-    await registerForDomains(domains);
+    const permittedDomains = [];
+    for (const domain of domains) {
+      const hasPermission = await chrome.permissions.contains({
+        origins: getPermissionOrigins(domain)
+      });
+      if (hasPermission) {
+        permittedDomains.push(domain);
+      }
+    }
+    await registerForDomains(permittedDomains);
   } catch (error) {
     console.error("Web Timer could not restore its configured domains:", error);
   }
@@ -117,5 +156,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }));
   return true;
 });
+
+chrome.runtime.onStartup.addListener(restoreConfiguration);
 
 restoreConfiguration();
